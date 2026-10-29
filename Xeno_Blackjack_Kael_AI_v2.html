@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Xeno Blackjack — Kael AI</title>
+<style>
+:root{--bg:#091511;--felt:#0d543c;--felt2:#083b2c;--gold:#f5c96b;--cream:#fff8e8;--muted:#b8d0c4;--red:#d94a4a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#183d2f 0,#091511 60%);color:var(--cream);font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+.app{max-width:560px;margin:auto;padding:14px 12px 26px}.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.brand{font-weight:900;letter-spacing:.08em;color:var(--gold);font-size:18px}.pill{border:1px solid #456b58;border-radius:99px;padding:7px 10px;font-size:12px;color:var(--muted)}
+.table{background:linear-gradient(145deg,var(--felt),var(--felt2));border:2px solid #b18a45;border-radius:26px;padding:16px 12px 18px;box-shadow:0 15px 45px #0008,inset 0 0 0 4px #ffffff08;position:relative;overflow:hidden}
+.table:before{content:"";position:absolute;inset:9px;border:1px solid #e5c47745;border-radius:20px;pointer-events:none}
+.section{position:relative;z-index:1}.label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#d5e6d8;font-weight:800;display:flex;justify-content:space-between;align-items:center}.score{color:var(--gold);font-size:13px;letter-spacing:0}
+.cards{display:flex;gap:7px;justify-content:center;min-height:106px;padding:10px 0 14px;flex-wrap:wrap}
+.card{width:64px;height:91px;background:var(--cream);color:#17221b;border-radius:9px;box-shadow:0 4px 9px #0005;display:flex;flex-direction:column;justify-content:space-between;padding:6px 7px;font-weight:850;border:1px solid #e6dfcc;animation:deal .24s ease-out}
+.card.red{color:#c52d38}.rank{font-size:18px;line-height:1}.suit{font-size:22px;align-self:center}.bottomrank{font-size:16px;transform:rotate(180deg);line-height:1;align-self:flex-end}.card.back{background:repeating-linear-gradient(45deg,#183d65,#183d65 5px,#f0d18a 5px,#f0d18a 7px);border:4px solid #fff4d9;color:transparent}
+@keyframes deal{from{transform:translateY(-10px) scale(.92);opacity:.4}to{transform:translateY(0) scale(1);opacity:1}}
+.divider{height:1px;background:#f1d38d33;margin:3px 0 12px;position:relative;z-index:1}
+.kael{display:flex;gap:11px;align-items:flex-start;margin:15px 0 13px}.avatar{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#f4d28a,#b66b32);display:grid;place-items:center;font-size:36px;flex-shrink:0;border:2px solid #ffe0a0;box-shadow:0 4px 14px #0005}
+.bubble{position:relative;background:#fff8e8;color:#253328;padding:11px 13px;border-radius:15px;box-shadow:0 5px 12px #0003;flex:1;font-size:14px;line-height:1.4;min-height:60px}.bubble:before{content:"";position:absolute;left:-7px;top:17px;border-width:7px 8px 7px 0;border-style:solid;border-color:transparent #fff8e8 transparent transparent}.bubble b{display:block;color:#9c5d20;font-size:11px;letter-spacing:.1em;margin-bottom:3px}
+.status{text-align:center;color:#c8ded1;font-size:12px;min-height:20px;margin:3px 0 8px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}.btn{border:0;border-radius:14px;padding:14px 10px;font-size:15px;font-weight:850;cursor:pointer;touch-action:manipulation}.btn:disabled{opacity:.35;cursor:default}.primary{background:linear-gradient(#f8d982,#e9ae46);color:#39270c;box-shadow:0 4px 0 #9b6c25}.secondary{background:#173b2d;border:1px solid #50745f;color:#f8f2df}.wide{grid-column:1/-1}.panel{margin-top:12px;padding:12px;border:1px solid #315341;background:#0c211a;border-radius:16px}.panel summary{font-weight:800;color:var(--gold);cursor:pointer}.field{margin-top:10px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;padding:11px;border-radius:10px;background:#102b21;border:1px solid #41624f;color:#fff;font-size:14px}.help{font-size:11px;line-height:1.45;color:#a7c1b3;margin-top:8px}.money{text-align:center;margin:9px 0 0;font-size:13px;color:var(--muted)}.money strong{color:var(--gold);font-size:17px}.footer{text-align:center;color:#779787;font-size:10px;margin-top:12px}
+@media(max-width:380px){.card{width:55px;height:82px}.cards{min-height:95px}.avatar{width:55px;height:55px;font-size:30px}.bubble{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div><div class="brand">XENO <span style="color:#fff">BLACKJACK</span></div><div style="font-size:11px;color:#9cb8a9">Kael AI • Local LLM</div></div><div class="pill" id="conn">AI belum dites</div></div>
+  <div class="kael">
+    <div class="avatar" aria-label="Kael">🦊</div>
+    <div class="bubble"><b>KAEL</b><span id="comment">Gua Kael. Mulai duel untuk bermain melawan Gemma lokal; dialog dan keputusan gua akan datang dari model, bukan skrip komentar.</span></div>
+  </div>
+  <div class="table">
+    <div class="section">
+      <div class="label"><span>Kael 🤖</span><span class="score" id="kaelScoreTop">—</span></div>
+      <div class="cards" id="kaelCardsTop"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <div class="label"><span>Lu 🧑</span><span class="score" id="playerScoreBottom">—</span></div>
+      <div class="cards" id="playerCardsBottom"></div>
+    </div>
+    <div class="status" id="status">Tekan Mulai Duel. Lu yang memilih Draw atau Stop; Kael main otomatis.</div>
+  </div>
+  <div class="money">Koin virtual lu: <strong id="bank">1000</strong> · Taruhan: <span id="betText">50</span></div>
+  <div class="controls">
+    <button class="btn primary" id="start">Mulai Duel</button>
+    <button class="btn secondary" id="stop" disabled>Lewati Animasi</button>
+    <button class="btn primary" id="draw" disabled>Draw · Ambil Kartu</button>
+    <button class="btn secondary" id="stand" disabled>Stop · Cukup</button>
+  </div>
+  <details class="panel">
+    <summary>⚙️ Pengaturan AI lokal</summary>
+    <div class="field"><label for="endpoint">Alamat server llama.cpp</label><input id="endpoint" value="http://127.0.0.1:11434" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label for="model">Nama model</label><input id="model" value="default" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label for="bet">Taruhan per ronde (koin virtual)</label><select id="bet"><option>10</option><option selected>50</option><option>100</option><option>200</option></select></div>
+    <div class="field"><label for="style">Gaya Kael</label><select id="style"><option value="playful" selected>Usil dan santai</option><option value="careful">Hati-hati dan analitis</option><option value="bold">Nekat dan percaya diri</option></select></div>
+    <div class="controls">
+      <button class="btn secondary" id="test">Tes Koneksi</button>
+      <button class="btn secondary" id="save">Pakai Pengaturan</button>
+    </div>
+    <div class="help">Game berjalan di browser. Untuk AI, server llama.cpp harus aktif dan mengizinkan request dari origin browser (CORS). Jika halaman dibuka sebagai file lokal dan koneksi ditolak, masalahnya bisa dari izin CORS server—bukan dari game. Tanpa AI tersambung, ronde tidak akan pura-pura memakai keputusan Gemma.</div>
+  </details>
+  <div class="footer">Permainan santai dengan koin virtual · Bukan uang asli</div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let deck = [], playerHand = [], kaelHand = [], bank = 1000, bet = 50;
+let busy = false, skip = false, gameOver = true;
+const suits = [['♠','black'],['♥','red'],['♦','red'],['♣','black']];
+
+function newDeck() {
+  deck = [];
+  for (const suit of suits) for (const rank of ['A','2','3','4','5','6','7','8','9','10','J','Q','K']) {
+    deck.push({r:rank,s:suit[0],color:suit[1]});
+  }
+  for (let i=deck.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+}
+function drawCard(){ if(!deck.length)newDeck(); return deck.pop(); }
+function score(hand) {
+  let total=0, aces=0;
+  for(const c of hand) {
+    if(c.r==='A'){total+=11;aces++;}
+    else total += ['K','Q','J'].includes(c.r)?10:Number(c.r);
+  }
+  while(total>21&&aces){total-=10;aces--;}
+  return total;
+}
+function cardHTML(c) {
+  return `<div class="card ${c.color}"><span class="rank">${c.r}</span><span class="suit">${c.s}</span><span class="bottomrank">${c.r}</span></div>`;
+}
+function render() {
+  // Kael is always at the TOP; the human player is always at the BOTTOM.
+  $('kaelCardsTop').innerHTML = kaelHand.map(cardHTML).join('');
+  $('playerCardsBottom').innerHTML = playerHand.map(cardHTML).join('');
+  $('kaelScoreTop').textContent = kaelHand.length ? score(kaelHand) : '—';
+  $('playerScoreBottom').textContent = playerHand.length ? score(playerHand) : '—';
+  $('bank').textContent = bank;
+  $('betText').textContent = bet;
+}
+function bubble(text){ $('comment').textContent=text; }
+function status(text){ $('status').textContent=text; }
+function setConn(text,ok=false){ $('conn').textContent=text; $('conn').style.color=ok?'#a8f0bc':'#ffd38b'; }
+function wait(ms){ return new Promise(resolve=>setTimeout(resolve,skip?0:ms)); }
+function endpoint(){return $('endpoint').value.trim().replace(/\/+$/,'');}
+function modelName(){return $('model').value.trim()||'default';}
+function styleDescription(){
+  const style=$('style').value;
+  if(style==='careful') return 'Hati-hati dan analitis, mempertimbangkan risiko.';
+  if(style==='bold') return 'Berani, percaya diri, agak nekat tetapi tetap masuk akal.';
+  return 'Usil, santai, ekspresif, terasa seperti teman dekat.';
+}
+async function askKael(purpose='move', resultText='') {
+  const currentScore=score(kaelHand), playerScore=score(playerHand);
+  let userPrompt;
+  if(purpose==='move') {
+    userPrompt = `Kamu sedang bermain Blackjack melawan pemilikmu.
+Kepribadian Kael: ${styleDescription()}
+KARTU KAEL: ${kaelHand.map(c=>c.r+c.s).join(', ')} (nilai ${currentScore}).
+KARTU PEMAIN: ${playerHand.map(c=>c.r+c.s).join(', ')} (nilai ${playerScore}).
+Pilih langkah untuk tanganmu sendiri. HIT berarti ambil satu kartu; STAND berarti berhenti.
+Pertimbangkan nilai tangan dan risiko melewati 21. Jangan mengarang kartu, karena game akan membagikan kartu.
+Balas dengan format persis:
+ACTION: HIT atau STAND
+COMMENT: komentar Kael yang natural dalam bahasa Indonesia, 1-2 kalimat. Komentari situasi/keputusanmu dengan gaya kepribadianmu.`;
+  } else {
+    userPrompt = `Kamu Kael, baru saja menyelesaikan satu ronde Blackjack melawan pemilikmu.
+Kepribadian: ${styleDescription()}
+Kartu Kael: ${kaelHand.map(c=>c.r+c.s).join(', ')} (nilai ${currentScore}).
+Kartu pemain: ${playerHand.map(c=>c.r+c.s).join(', ')} (nilai ${playerScore}).
+Hasil resmi dari game: ${resultText}
+Tulis hanya komentar reaksi Kael dalam bahasa Indonesia, 1-2 kalimat, sesuai kepribadianmu. Jangan mengubah hasil atau mengarang kartu.`;
+  }
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),30000);
+  try {
+    const response=await fetch(endpoint()+'/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:modelName(),
+        messages:[
+          {role:'system',content:'Kamu adalah Kael. Kamu sendiri yang mengambil keputusan dan menulis dialog. Jangan menyerahkan keputusan kepada skrip. Ikuti format permintaan.'},
+          {role:'user',content:userPrompt}
+        ],
+        temperature:0.85,max_tokens:140,stream:false
+      }),
+      signal:controller.signal
+    });
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    const raw=data.choices?.[0]?.message?.content;
+    if(typeof raw!=='string'||!raw.trim()) throw new Error('Balasan model kosong');
+    if(purpose==='move') {
+      const actionMatch=raw.match(/ACTION\s*:\s*(HIT|STAND)\b/i);
+      const commentMatch=raw.match(/COMMENT\s*:\s*([\s\S]*)/i);
+      if(!actionMatch || !commentMatch || !commentMatch[1].trim()) {
+        throw new Error('Format Gemma tidak valid. Model harus memberi ACTION dan COMMENT.');
+      }
+      return {action:actionMatch[1].toUpperCase(),comment:commentMatch[1].trim().replace(/^["']|["']$/g,'')};
+    }
+    return raw.trim();
+  } finally { clearTimeout(timeout); }
+}
+function setActionButtons(enabled){
+  $('draw').disabled=!enabled;
+  $('stand').disabled=!enabled;
+}
+async function startRound(){
+  if(busy)return;
+  bet=Number($('bet').value);
+  if(bank<bet){status('Koin virtual lu tidak cukup.');return;}
+  busy=true;gameOver=false;skip=false;
+  $('start').disabled=true;$('stop').disabled=false;setActionButtons(false);
+  bank-=bet;newDeck();playerHand=[drawCard(),drawCard()];kaelHand=[drawCard(),drawCard()];render();
+  status('Kartu dibagikan. Giliran lu: pilih Draw atau Stop.');
+  await wait(300);
+  if(score(playerHand)===21) {
+    status('Lu dapat Blackjack 21. Kael akan mengambil gilirannya setelah lu menekan Stop.');
+  }
+  setActionButtons(true);
+}
+async function playerDraw(){
+  if(!busy||gameOver||$('draw').disabled)return;
+  setActionButtons(false);
+  playerHand.push(drawCard());render();
+  const total=score(playerHand);
+  if(total>=21){
+    status(total>21?'Lu bust! Kael lanjut otomatis.':'Lu mencapai 21. Kael lanjut otomatis.');
+    await wait(450);await kaelTurn();return;
+  }
+  status(`Nilai lu ${total}. Pilih Draw lagi atau Stop.`);
+  setActionButtons(true);
+}
+async function playerStand(){
+  if(!busy||gameOver||$('stand').disabled)return;
+  setActionButtons(false);
+  status(`Lu berhenti di ${score(playerHand)}. Gemma sedang menjalankan giliran Kael…`);
+  await wait(350);
+  await kaelTurn();
+}
+async function kaelTurn(){
+  setActionButtons(false);
+  try {
+    setConn('Gemma berpikir…');
+    let turns=0;
+    while(score(kaelHand)<=21 && turns<10) {
+      turns++;
+      status('Gemma sedang memilih langkah Kael…');
+      const decision=await askKael('move');
+      // Every in-game Kael comment comes from Gemma; no scripted dialogue substitutes for it.
+      bubble(decision.comment);
+      status(`Kael memilih ${decision.action==='HIT'?'Draw':'Stop'} berdasarkan keputusan Gemma.`);
+      await wait(700);
+      if(decision.action==='STAND') break;
+      kaelHand.push(drawCard());render();
+      await wait(350);
+      if(score(kaelHand)>21) break;
+    }
+    const resultText=getResultText();
+    status(resultText);
+    setConn('Gemma aktif',true);
+    try {
+      const reaction=await askKael('reaction',resultText);
+      bubble(reaction);
+    } catch(err) {
+      bubble(''); // Do not replace a failed model response with scripted character dialogue.
+      status(resultText+' · Gagal mengambil komentar akhir dari Gemma: '+err.message);
+    }
+    settleResult();
+  } catch(err) {
+    setConn('AI gagal');
+    status('Gemma gagal merespons: '+err.message+'. Ronde dibatalkan; taruhan dikembalikan.');
+    bank+=bet;render();busy=false;gameOver=true;
+    $('start').disabled=false;$('stop').disabled=true;setActionButtons(false);
+    bubble(''); // No fake Kael dialogue when the local model fails.
+  }
+}
+function getResultText(){
+  const p=score(playerHand),k=score(kaelHand);
+  if(p>21&&k>21)return `Seri: pemain bust (${p}) dan Kael bust (${k}).`;
+  if(p>21)return `Kael menang. Pemain bust dengan nilai ${p}; Kael bernilai ${k}.`;
+  if(k>21)return `Pemain menang. Kael bust dengan nilai ${k}; pemain bernilai ${p}.`;
+  if(p>k)return `Pemain menang dengan ${p} melawan Kael ${k}.`;
+  if(k>p)return `Kael menang dengan ${k} melawan pemain ${p}.`;
+  return `Seri. Pemain dan Kael sama-sama bernilai ${p}.`;
+}
+function settleResult(){
+  const p=score(playerHand),k=score(kaelHand);
+  if(p>21&&k>21)bank+=bet;
+  else if(p>21){} 
+  else if(k>21||p>k)bank+=bet*2;
+  else if(p===k)bank+=bet;
+  status(getResultText());
+  render();busy=false;gameOver=true;
+  $('start').disabled=false;$('stop').disabled=true;setActionButtons(false);
+}
+$('start').addEventListener('click',startRound);
+$('draw').addEventListener('click',playerDraw);
+$('stand').addEventListener('click',playerStand);
+$('stop').addEventListener('click',()=>{skip=true;status('Animasi dipercepat. Gemma tetap yang menentukan langkah Kael.')});
+$('test').addEventListener('click',async()=>{
+  setConn('Mengecek…');
+  try {
+    const response=await fetch(endpoint()+'/v1/models');
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    await response.json();setConn('Server tersambung',true);
+    status('Server terhubung. Mulai duel untuk meminta Gemma mengendalikan Kael.');
+  } catch(err) {
+    setConn('Belum tersambung');
+    status('Tidak bisa menghubungi server: '+err.message+'. Periksa server dan izin CORS.');
+  }
+});
+$('save').addEventListener('click',()=>{
+  bet=Number($('bet').value);$('betText').textContent=bet;
+  status('Pengaturan dipakai. Tekan Mulai Duel untuk bermain.');
+});
+render();
+</script>
+</body>
+</html>
