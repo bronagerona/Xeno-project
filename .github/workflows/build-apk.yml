@@ -24,7 +24,10 @@ jobs:
         uses: android-actions/setup-android@v3
           # Install valid SDK packages; the legacy "tools" package no longer exists.
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
