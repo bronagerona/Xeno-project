@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Sandev Fortress</title>
+<style>
+:root{color-scheme:dark;--bg:#091321;--card:#17263a;--line:#304966;--mut:#9eb0c6;--gold:#f5d77c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:#fff;font-family:system-ui,Arial,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{height:100%;max-width:900px;margin:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+header{display:flex;justify-content:space-between;align-items:center;font-weight:bold}
+header span{display:flex;gap:6px}
+header button{padding:6px 10px;background:var(--card)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.stat{background:var(--card);padding:6px;border-radius:9px;font-size:10px;color:var(--mut)}
+.stat b{display:block;margin-top:2px;font-size:13px;color:#fff}
+.bar{display:block;height:4px;background:#0006;border-radius:3px;margin-top:3px;overflow:hidden}
+.bar u{display:block;height:100%;width:100%;background:#48d597}
+#arena{flex:1;min-height:180px;border:2px solid var(--line);border-radius:12px;position:relative;overflow:hidden;background:#0d1929}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+button{border:0;border-radius:9px;padding:12px 5px;background:linear-gradient(to top,#0009 var(--p,0%),transparent var(--p,0%)),#246ba7;color:#fff;font-weight:bold;font-size:13px}
+button:disabled{opacity:.4}
+#message{font-size:12px;color:var(--gold);min-height:16px;text-align:center}
+#petBubble{position:absolute;z-index:4;display:none;max-width:min(68%,260px);min-width:110px;padding:8px 11px;border:1px solid #f5d77c;border-radius:13px;background:#fff;color:#17263a;font-size:12px;font-weight:700;line-height:1.35;text-align:left;box-shadow:0 4px 14px #0008;pointer-events:none;transform:translateY(-100%)}
+#petBubble:after{content:"";position:absolute;left:16px;bottom:-7px;width:12px;height:12px;background:#fff;border-right:1px solid #f5d77c;border-bottom:1px solid #f5d77c;transform:rotate(45deg)}
+#petBubble.loading{color:#64748b;font-style:italic}
+#overlay{position:absolute;inset:0;background:#030914ee;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px}
+.modal{width:100%;max-width:420px;max-height:100%;overflow:auto;background:#172b43;border:1px solid #42617e;border-radius:15px;padding:16px}
+.modal h1{font-size:21px;margin:0 0 6px}
+.modal p{font-size:13px;line-height:1.5;color:#c4d3e3;margin:6px 0}
+.row{display:flex;gap:6px;align-items:center;justify-content:center;margin:8px 0}
+.row b{flex:1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.grid button{background:#1f4a73}
+.go{width:100%;background:#2e9a5a;font-size:15px}
+small{font-weight:normal;color:#cde}
+.hidden{display:none!important}
+.ai-status{font-size:12px;padding:8px;border-radius:8px;background:#0c1b2c;color:#cde;margin:8px 0;text-align:left}
+.ai-chat{height:180px;overflow:auto;background:#0b1928;border:1px solid #304966;border-radius:9px;padding:8px;text-align:left;font-size:12px}
+.ai-line{margin:6px 0;padding:7px 9px;border-radius:9px;max-width:92%;line-height:1.4;overflow-wrap:anywhere}
+.ai-line.pet{background:#e8f2ff;color:#17263a;margin-right:auto}
+.ai-line.player{background:#246ba7;color:#fff;margin-left:auto}
+.ai-chatrow{display:flex;gap:6px;margin-top:7px}
+.ai-chatrow input{min-width:0;flex:1;border:1px solid #42617e;border-radius:8px;background:#0b1928;color:#fff;padding:10px;font-size:13px}
+.ai-tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.ai-tools button{padding:10px 5px}
+</style></head>
+<body>
+<div id="app">
+<header><div>🏰 SANDEV FORTRESS</div><span><button onclick="openCompanion()">🐺 AI</button><button id="mt" onclick="mute()">🔊</button><button onclick="pause()">⏸</button></span></header>
+<div class="stats">
+<div class="stat">STAGE<b id="sg">1</b></div>
+<div class="stat">GOLD<b id="gd">0</b></div>
+<div class="stat" id="lvc">🤠 LV<b id="lv">1</b><i class="bar"><u id="xb" style="background:#7dd3fc"></u></i></div>
+<div class="stat">BENTENG<b id="hp">0</b><i class="bar"><u id="hb"></u></i></div>
+</div>
+<div id="arena"><canvas id="game"></canvas><div id="petBubble"></div><div id="overlay"></div></div>
+<div id="message"></div>
+<div class="controls">
+<button id="bs" onclick="useSkill()">💥 SKILL</button>
+<button id="bf" onclick="useFrost()">❄️ FROST</button>
+<button id="br" onclick="useRepair()">❤️ REPAIR</button>
+</div>
+</div>
+<script>
+const $=i=>document.getElementById(i),cv=$('game'),ctx=cv.getContext('2d'),ov=$('overlay');
+let W=800,H=500,wallY=350;
+let S={stage:1,max:1,gold:300,lv:1,xp:0,up:{dmg:0,spd:0,pet:0,wall:0,multi:0},mute:false};
+try{const d=JSON.parse(localStorage.getItem('sandev2'));if(d)S=Object.assign(S,d)}catch(e){}
+const save=()=>{try{localStorage.setItem('sandev2',JSON.stringify(S))}catch(e){}};
+
+/* ===== AUDIO ===== */
+let AC=null,MG=null,lastHit=0;
+function initAudio(){try{if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();MG=AC.createGain();MG.gain.value=.5;MG.connect(AC.destination)}if(AC.state==='suspended')AC.resume()}catch(e){}}
+function tone(f,d,ty='square',v=.12,to=0,dl=0){if(!AC||S.mute)return;const t=AC.currentTime+dl,o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(MG);o.start(t);o.stop(t+d+.03)}
+function noise(d,v=.25){if(!AC||S.mute)return;const n=AC.sampleRate*d,b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),g=AC.createGain();g.gain.value=v;s.buffer=b;s.connect(g);g.connect(MG);s.start()}
+const arp=(a,ty='square',v=.1)=>a.forEach((f,i)=>tone(f,.18,ty,v,0,i*.1));
+const sfx={
+ shoot:()=>tone(750,.08,'triangle',.07,300),pet:()=>tone(950,.07,'sine',.06,500),
+ hit:()=>{const n=performance.now();if(n-lastHit>60){lastHit=n;tone(220,.05,'square',.05,100)}},
+ kill:()=>tone(400,.12,'square',.09,900),wall:()=>{noise(.25,.3);tone(90,.25,'sawtooth',.18,40)},
+ skill:()=>tone(300,.4,'sawtooth',.1,1300),frost:()=>tone(1300,.5,'sine',.12,300),
+ heal:()=>arp([500,660,880],'sine'),boss:()=>{tone(90,1,'sawtooth',.22,45);noise(.6,.2)},
+ win:()=>arp([523,659,784,1047,1319]),lose:()=>{tone(400,.9,'sawtooth',.15,60);noise(.5,.2)},
+ lvl:()=>arp([660,880,1100,1320],'triangle'),click:()=>tone(600,.05,'square',.06),buy:()=>arp([700,1000],'triangle')
+};
+const BG=[110,110,131,147,110,165,147,131];let bi=0;
+setInterval(()=>{if(st==='play'){tone(BG[bi++%8]*(stage%2?1:1.19),.22,'triangle',.045)}},260);
+function mute(){S.mute=!S.mute;$('mt').textContent=S.mute?'🔇':'🔊';initAudio();save()}
+$('mt').textContent=S.mute?'🔇':'🔊';
+
+/* ===== COMPANION MENU: CONNECTION TEST + CHAT ===== */
+let chatHistory=[];
+function openCompanion(){
+  const h='<h1>🐺 COMPANION AI</h1>'+
+    '<p>Gemma 3 1B • Sandev Fortress</p>'+
+    '<div id="aiStatus" class="ai-status">Belum dites. Tekan TES KONEKSI.</div>'+
+    '<div class="ai-tools"><button onclick="testAIConnection()">🔌 TES KONEKSI</button><button onclick="chatHistory=[];renderAIChat()">🧹 HAPUS CHAT</button></div>'+
+    '<div id="aiChat" class="ai-chat"><div class="ai-line pet">Hai Bos! Aku siap menemanimu. 🐺</div></div>'+
+    '<div class="ai-chatrow"><input id="aiInput" placeholder="Ngobrol dengan companion..." maxlength="300"><button onclick="sendAIChat()">KIRIM</button></div>'+
+    '<p><small>Server: 127.0.0.1:11434</small></p>'+
+    '<button class="go" onclick="hub()">TUTUP</button>';
+  screen(h);
+  $('aiInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendAIChat()});
+}
+function setAIStatus(t,ok){
+  const el=$('aiStatus');if(!el)return;
+  el.textContent=t;el.style.color=ok===true?'#48d597':ok===false?'#ff9d9d':'#cde';
+}
+async function testAIConnection(){
+  setAIStatus('Menghubungkan ke server Gemma...',null);
+  try{
+    const r=await fetch('http://127.0.0.1:11434/v1/models',{method:'GET'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const names=(d.data||[]).map(x=>x.id).filter(Boolean);
+    setAIStatus('Terhubung! Model tersedia: '+(names.join(', ')||'server merespons')+'.',true);
+  }catch(e){
+    setAIStatus('Gagal terhubung: '+e.message+'. Periksa server dan izin CORS.',false);
+  }
+}
+function renderAIChat(){
+  const el=$('aiChat');if(!el)return;
+  el.innerHTML='';
+  const lines=chatHistory.length?chatHistory:[{role:'assistant',content:'Hai Bos! Aku siap menemanimu. 🐺'}];
+  lines.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='ai-line '+(m.role==='user'?'player':'pet');
+    d.textContent=m.content;el.appendChild(d);
+  });
+  el.scrollTop=el.scrollHeight;
+}
+async function sendAIChat(){
+  const input=$('aiInput');if(!input)return;
+  const text=input.value.trim();if(!text)return;
+  input.value='';
+  chatHistory.push({role:'user',content:text});renderAIChat();
+  const sendBtn=input.parentElement.querySelector('button');sendBtn.disabled=true;
+  try{
+    const messages=[{role:'system',content:AI_SYSTEM+' Kamu sedang mengobrol langsung dengan pemain. Jawab ramah, relevan, dan singkat.'},
+      ...chatHistory.slice(-12).map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content}))];
+    const r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:AI_MODEL,messages,temperature:.5,top_p:.8,max_tokens:100,stream:false})});
+    if(!r.ok){let info='';try{info=(await r.text()).slice(0,180)}catch(e){}throw new Error('HTTP '+r.status+(info?' — '+info:''));}
+    const d=await r.json();
+    const answer=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content||'Maaf Bos, aku belum bisa menjawab.').trim();
+    chatHistory.push({role:'assistant',content:answer});renderAIChat();
+  }catch(e){
+    chatHistory.push({role:'assistant',content:'Aduh, koneksi AI terputus. Cek server Gemma dulu ya. ('+e.message+')'});renderAIChat();
+  }finally{sendBtn.disabled=false;input.focus()}
+}
+
+/* ===== DATA ===== */
+const MON=[
+ {n:'Slime',e:'🟢',hp:85,atk:8,sp:22,def:0,t:1},{n:'Goblin',e:'👺',hp:125,atk:12,sp:29,def:3,t:1},
+ {n:'Wolf',e:'🐺',hp:105,atk:15,sp:43,def:2,t:2,zz:1},{n:'Bat',e:'🦇',hp:95,atk:10,sp:48,def:0,t:2,zz:1},
+ {n:'Skeleton',e:'💀',hp:180,atk:20,sp:23,def:10,t:3},{n:'Orc',e:'👹',hp:340,atk:35,sp:19,def:16,t:4},
+ {n:'Troll',e:'🧌',hp:560,atk:50,sp:15,def:23,t:5}];
+const BOSS=[{n:'Dark Lord',e:'👑'},{n:'Golem',e:'🗿'},{n:'Frost Giant',e:'🥶'},{n:'Dragon',e:'🐲'},{n:'Demon King',e:'😈'}];
+const TH=[{n:'Hutan',c:['#0f2d4a','#2f6f6a','#244d2b'],d:'#fff',v:4},{n:'Gurun',c:['#4a2a12','#c98a3d','#8a6a34'],d:'#ffe9b0',v:8},
+ {n:'Salju',c:['#1c3350','#a9c8e0','#cfe0ee'],d:'#fff',v:25},{n:'Lava',c:['#2a0a0a','#a3321b','#3b1f1a'],d:'#ffb347',v:-22},{n:'Malam',c:['#050818','#2b2a66','#1a1a33'],d:'#cfd8ff',v:2}];
+const UPS=[{k:'dmg',n:'🏹 Damage',b:120,m:40},{k:'spd',n:'⚡ Kecepatan',b:150,m:9},{k:'pet',n:'🐺 Pet',b:140,m:40},{k:'wall',n:'🧱 Benteng',b:160,m:40},{k:'multi',n:'🎯 Multi-Panah',b:450,m:3}];
+const cost=u=>Math.round(u.b*(1+S.up[u.k]*.4));
+const dmg=()=>34+S.up.dmg*5+(S.lv-1)*2,intv=()=>Math.max(.28,.75-S.up.spd*.05),petDmg=()=>12+S.up.pet*3+(S.lv-1),multi=()=>1+Math.min(3,S.up.multi),need=()=>30+S.lv*20;
+
+/* ===== STATE ===== */
+let st='menu',stage=Math.min(S.stage,S.max),enemies=[],shots=[],parts=[],texts=[],dots=[];
+let spawned=0,total=0,killed=0,bossOn=false,boss=null,spawnT=0,potions={frost:2,repair:2},fortHP=1000,fortMax=1000,fortDef=4;
+let frostT=0,bersT=0,combo=0,comboT=0,shake=0,skillCD=0,pCD=0,petCD=0,petSk=0,aimIdle=9,time=0,earned=0,banner=0;
+const P={x:400,y:400,ax:400,ay:100};
+const th=()=>TH[(stage-1)%5];
+
+function resize(){const r=cv.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0);wallY=H*.7;P.x=W*.5;P.y=H*.84;
+ dots=[];for(let i=0;i<35;i++)dots.push({x:Math.random()*W,y:Math.random()*wallY,r:Math.random()*1.8+.5})}
+new ResizeObserver(resize).observe(cv);resize();
+const msg=t=>$('message').textContent=t;
+
+/* ===== AI COMPANION: Gemma 3 1B via llama.cpp =====
+   Jika nama model di server berbeda, ubah AI_MODEL.
+   Browser dan server harus berada di HP yang sama.
+*/
+const AI_URL='http://127.0.0.1:11434/v1/chat/completions';
+const AI_MODEL='default';
+const petBubble=$('petBubble');
+let aiBusy=false,aiLastAt=0,aiHideTimer=0,aiLastEvent='';
+const AI_COOLDOWN_MS=7000, AI_BUBBLE_MS=4500;
+const AI_SYSTEM='Kamu adalah serigala companion yang menemani pemain di game tower defense Sandev Fortress. Kamu ceria, setia, sedikit jahil, ekspresif, dan berbicara dalam Bahasa Indonesia santai. Buat komentar baru berdasarkan kejadian dan data permainan yang diberikan, jangan mengulang kalimat tetap atau memakai template. Balas hanya satu komentar pendek (maksimal 12 kata) untuk bubble game. Jangan gunakan tanda kutip atau menjelaskan bahwa kamu AI.';
+function showPetBubble(text){
+  if(!text)return;
+  petBubble.textContent=text;
+  petBubble.classList.remove('loading');
+  petBubble.style.display='block';
+  clearTimeout(aiHideTimer);
+  aiHideTimer=setTimeout(()=>{petBubble.style.display='none'},AI_BUBBLE_MS);
+}
+function positionPetBubble(){
+  if(petBubble.style.display==='none'||!petBubble.style.display)return;
+  const arena=$('arena'),r=arena.getBoundingClientRect();
+  const scaleX=r.width/(W||1),scaleY=r.height/(H||1);
+  const left=Math.max(8,Math.min(r.width-petBubble.offsetWidth-8,(P.x+55)*scaleX));
+  const top=Math.max(petBubble.offsetHeight+12,Math.min(r.height-12,(P.y-18)*scaleY));
+  petBubble.style.left=left+'px';
+  petBubble.style.top=top+'px';
+}
+async function companionSay(eventName,detail=''){
+  const now=Date.now();
+  // Jangan membanjiri model: maksimal satu permintaan tiap 5,5 detik.
+  if(aiBusy||now-aiLastAt<AI_COOLDOWN_MS||!eventName)return;
+  aiBusy=true;aiLastAt=now;aiLastEvent=eventName;
+  petBubble.style.display='none';
+  petBubble.classList.remove('loading');
+  const context='Kejadian: '+eventName+'. Detail permainan: '+detail+
+    '. Stage '+stage+', level pemain '+S.lv+', HP benteng '+Math.max(0,Math.round(fortHP))+'/'+fortMax+
+    ', jumlah monster dikalahkan '+killed+'.';
+  try{
+    const res=await fetch(AI_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:AI_MODEL,
+        messages:[{role:'system',content:AI_SYSTEM},{role:'user',content:context}],
+        temperature:0.5,
+        top_p:0.8,
+        max_tokens:64,
+        stream:false
+      })
+    });
+    if(!res.ok){
+      let info='';try{info=(await res.text()).slice(0,180)}catch(e){}
+      throw new Error('HTTP '+res.status+(info?' — '+info:''));
+    }
+    const data=await res.json();
+    const answer=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    if(answer)showPetBubble(answer.replace(/^["“”]+|["“”]+$/g,'').slice(0,150));
+  }catch(err){
+    // Tidak ada komentar cadangan: jika model gagal, serigala diam.
+    petBubble.style.display='none';
+    console.warn('Gemma companion tidak terhubung:',err);
+  }finally{aiBusy=false}
+}
+function hud(){$('sg').textContent=stage+' • '+(st==='play'||st==='pause'?killed+'/'+(total+1):th().n);$('gd').textContent=S.gold;$('lv').textContent=S.lv;
+ $('xb').style.width=Math.min(100,S.xp/need()*100)+'%';$('hp').textContent=Math.ceil(fortHP)+'/'+fortMax;
+ const p=fortHP/fortMax;$('hb').style.width=p*100+'%';$('hb').style.background=p>.5?'#48d597':p>.25?'#f5b942':'#ef4444';
+ const on=st==='play';$('bs').style.setProperty('--p',(skillCD>0?skillCD/8*100:0)+'%');$('bs').disabled=!on||skillCD>0;
+ $('bf').textContent='❄️ FROST ×'+potions.frost;$('bf').disabled=!on||potions.frost<=0;
+ $('br').textContent='❤️ REPAIR ×'+potions.repair;$('br').disabled=!on||potions.repair<=0||fortHP>=fortMax}
+
+/* ===== SCREENS ===== */
+function screen(h){ov.innerHTML='<div class="modal">'+h+'</div>';ov.classList.remove('hidden')}
+function hub(){st='menu';sfx.click();const b=BOSS[(stage-1)%5];
+ let h='<h1>🏰 SANDEV FORTRESS</h1><p>🤠 Lv.'+S.lv+' • 💰 '+S.gold+' G<br>Geser jari untuk membidik. Tembak otomatis.</p>'+
+ '<div class="row"><button onclick="pick(-1)" '+(stage<=1?'disabled':'')+'>‹</button><b>STAGE '+stage+'<br><small>'+th().n+' • Boss '+b.e+' '+b.n+'</small></b><button onclick="pick(1)" '+(stage>=S.max?'disabled':'')+'>›</button></div>'+
+ '<button class="go" onclick="startStage()">▶ MULAI STAGE</button><p>🛒 TOKO UPGRADE</p><div class="grid">';
+ UPS.forEach(u=>{const l=S.up[u.k],c=cost(u),mx=l>=u.m;h+='<button '+(mx||S.gold<c?'disabled':'')+' onclick="buy(\''+u.k+'\')">'+u.n+' Lv.'+l+'<br><small>'+(mx?'MAX':c+' G')+'</small></button>'});
+ screen(h+'</div>');hud()}
+function pick(d){stage=Math.max(1,Math.min(S.max,stage+d));hub()}
+function buy(k){const u=UPS.find(x=>x.k===k),c=cost(u);if(S.gold<c||S.up[k]>=u.m)return;S.gold-=c;S.up[k]++;sfx.buy();save();hub()}
+function pause(){if(st!=='play')return;st='pause';sfx.click();screen('<h1>⏸ JEDA</h1><button class="go" onclick="resume()">▶ LANJUT</button><p></p><button class="go" style="background:#7a3030" onclick="hub()">🏠 MENU (stage batal)</button>')}
+function resume(){ov.classList.add('hidden');st='play';sfx.click()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+
+/* ===== GAME FLOW ===== */
+function startStage(){initAudio();sfx.click();total=Math.min(70,12+stage*5);spawned=killed=0;bossOn=false;boss=null;enemies=[];shots=[];parts=[];texts=[];
+ spawnT=1.2;fortMax=1000+S.up.wall*150;fortHP=fortMax;fortDef=4+S.up.wall;potions={frost:2+(stage/5|0),repair:2+(stage/5|0)};
+ frostT=bersT=combo=skillCD=0;pCD=.4;petCD=.8;petSk=3;earned=0;aimIdle=9;banner=2.5;st='play';ov.classList.add('hidden');msg('Bertahan! Hancurkan '+total+' monster lalu kalahkan Boss.');hud()}
+function spawnMob(x,y,extra){const pool=MON.filter(m=>m.t<=stage+1),p=spawned/total,m=pool[Math.floor(Math.min(.999,Math.random()*.6+p*.4)*pool.length)];
+ if(!extra)spawned++;const sc=1+(stage-1)*.2,hp=m.hp*sc*(1+p*.25);
+ enemies.push({n:m.n,e:m.e,x:x??W*(.1+Math.random()*.8),y:y??-20,hp,max:hp,atk:m.atk*(1+(stage-1)*.15),sp:m.sp*(1+(stage-1)*.03),def:m.def+Math.floor((stage-1)*.6),zz:m.zz,atkCD:Math.random(),slow:0,flash:0,seed:Math.random()*6,boss:0,xp:1})}
+function spawnBoss(){companionSay('Boss muncul','Boss '+BOSS[(stage-1)%5].n+' datang menyerang');bossOn=true;const b=BOSS[(stage-1)%5],hp=2200*(1+(stage-1)*.5);boss={n:b.n,e:b.e,x:W/2,y:-40,hp,max:hp,atk:60+stage*12,sp:12,def:20+stage*2,atkCD:1,slow:0,flash:0,seed:0,boss:1,sum:5};
+ enemies.push(boss);sfx.boss();shake=12;banner=2.5;msg('🚨 BOSS '+b.n+' MUNCUL!')}
+function giveXp(n){S.xp+=n;while(S.xp>=need()){S.xp-=need();S.lv++;sfx.lvl();msg('⭐ LEVEL UP! Lv.'+S.lv+' (damage naik)');txt(P.x,P.y-50,'LEVEL UP!','#7dd3fc',1.6)}}
+function killMob(e,silent){if(e.dead)return;e.dead=true;burst(e.x,e.y,e.boss?30:12,e.boss?'#f5d77c':'#ff9d5c');if(silent)return;killed++;
+ const g=Math.max(4,Math.round(e.max/30))*(e.boss?3:1);S.gold+=g;earned+=g;giveXp(e.boss?120:Math.round(e.max/25)+3);txt(e.x,e.y-20,'+'+g+'G','#f5d77c');
+ combo++;comboT=2.2;if(e.boss)companionSay('Boss dikalahkan','Pemain berhasil mengalahkan '+e.n);else if(combo===1||combo%5===0)companionSay('Monster dikalahkan','Serigala ikut menyerang '+e.n+'; combo '+combo);if(combo%10===0){bersT=5;msg('🔥 BERSERK! Damage +35%');sfx.skill()}else msg(e.e+' '+e.n+' dikalahkan!');sfx.kill();
+ if(e.boss)win()}
+function hitMob(e,d,crit){const r=Math.max(d*.3,d-e.def)*(crit?2:1);e.hp-=r;e.flash=.1;sfx.hit();txt(e.x+(Math.random()*16-8),e.y-24,Math.round(r)+(crit?'!':''),crit?'#ff9d2e':'#fff',.7);if(e.hp<=0)killMob(e)}
+function wallHit(e){const d=Math.max(1,e.atk-fortDef)*(frostT>0?.5:1);fortHP=Math.max(0,fortHP-d);if(fortHP/fortMax<.3)companionSay('Benteng kritis','HP benteng tinggal '+Math.ceil(fortHP)+' dari '+fortMax);shake=e.boss?10:4;sfx.wall();txt(e.x,wallY-8,'-'+Math.ceil(d),'#ff6b6b',.9);burst(e.x,wallY,6,'#aaa');if(fortHP<=0)lose()}
+function win(){companionSay('Stage dimenangkan','Pemain menyelesaikan stage dan mendapat kemenangan');st='end';sfx.win();enemies.forEach(e=>killMob(e,1));const p=fortHP/fortMax,stars=p>.7?3:p>.35?2:1,bonus=300+stage*100+stars*50;S.gold+=bonus;
+ if(stage===S.max){S.max++}S.stage=stage=Math.min(stage+1,S.max);save();
+ screen('<h1>🏆 STAGE SELESAI!</h1><p style="font-size:30px">'+'⭐'.repeat(stars)+'☆'.repeat(3-stars)+'</p><p>Gold stage: +'+earned+'<br>Bonus: +'+bonus+'<br>🤠 Lv.'+S.lv+'</p><button class="go" onclick="hub()">LANJUT KE TOKO</button>')}
+function lose(){companionSay('Benteng hancur','Pertahanan gagal; beri semangat kepada pemain');st='end';sfx.lose();save();screen('<h1>💥 GAME OVER</h1><p>Benteng hancur. Kamu tetap membawa gold (+'+earned+'G) dan XP. Upgrade lalu coba lagi!</p><button class="go" onclick="startStage()">🔁 ULANGI STAGE</button><p></p><button class="go" style="background:#246ba7" onclick="hub()">🛒 TOKO</button>')}
+
+/* ===== COMBAT ===== */
+function fire(fx,fy,tx,ty,d,pet,sp=0){const a=Math.atan2(ty-fy,tx-fx)+sp,v=pet?420:580;shots.push({x:fx,y:fy,px:fx,py:fy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,d,pet,life:1.8,crit:!pet&&Math.random()<.15})}
+function useSkill(){if(st!=='play'||skillCD>0)return;companionSay('Pemain memakai skill','Pemain mengaktifkan Spread Shot');skillCD=8;const n=11;for(let i=0;i<n;i++)fire(P.x,P.y-12,P.ax,P.ay,dmg()*.9,0,(i/(n-1)-.5)*1.5);sfx.skill();shake=5;msg('💥 SPREAD SHOT!')}
+function useFrost(){if(st!=='play'||potions.frost<=0)return;companionSay('Pemain memakai Frost','Monster dibekukan');potions.frost--;frostT=4;sfx.frost();msg('❄️ FROST! Monster membeku, serangan melemah.')}
+function useRepair(){if(st!=='play'||potions.repair<=0||fortHP>=fortMax)return;companionSay('Benteng diperbaiki','Pemain memulihkan benteng');potions.repair--;fortHP=Math.min(fortMax,fortHP+fortMax*.25);sfx.heal();burst(P.x,wallY,14,'#48d597');msg('❤️ Benteng dipulihkan 25%')}
+function burst(x,y,n,c){for(let i=0;i<n;i++){const a=Math.random()*6.3,s=40+Math.random()*120;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,l:.6+Math.random()*.4,m:1,c,r:2+Math.random()*3})}}
+function txt(x,y,t,c,l=1){texts.push({x,y,t,c,l,m:l})}
+function fx(dt){shake=Math.max(0,shake-dt*30);parts.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=200*dt;p.l-=dt});texts.forEach(t=>{t.y-=28*dt;t.l-=dt});parts=parts.filter(p=>p.l>0);texts=texts.filter(t=>t.l>0);banner=Math.max(0,banner-dt)}
+function update(dt){time+=dt;fx(dt);if(st!=='play')return;aimIdle+=dt;
+ spawnT-=dt;if(spawned<total&&spawnT<=0&&enemies.filter(e=>!e.boss).length<Math.min(14,5+(stage>>1))){spawnMob();spawnT=Math.max(.45,2.3-stage*.1-spawned/total*.8)}
+ if(spawned>=total&&!bossOn)spawnBoss();
+ if(boss&&!boss.dead){boss.sum-=dt;if(boss.sum<=0&&boss.y>0){boss.sum=7;spawnMob(boss.x-45,boss.y,1);spawnMob(boss.x+45,boss.y,1)}}
+ frostT=Math.max(0,frostT-dt);bersT=Math.max(0,bersT-dt);skillCD=Math.max(0,skillCD-dt);if((comboT-=dt)<=0)combo=0;
+ const front=enemies.filter(e=>!e.dead).sort((a,b)=>b.y-a.y);
+ if(aimIdle>2.5&&front[0]){P.ax=front[0].x;P.ay=front[0].y}
+ pCD-=dt;if(pCD<=0&&front.length){const n=multi(),d=dmg()*(bersT>0?1.35:1);for(let i=0;i<n;i++)fire(P.x,P.y-12,P.ax,P.ay,d,0,(i-(n-1)/2)*.13);sfx.shoot();pCD=intv()}
+ petCD-=dt;petSk-=dt;if(petCD<=0&&front[0]){const t=front[0];fire(P.x+46,P.y,t.x,t.y,petDmg(),1);sfx.pet();petCD=1.15}
+ if(petSk<=0&&front.filter(e=>e.y>H*.35).length>=3){front.forEach(e=>e.slow=3);petSk=9;sfx.frost();burst(P.x+46,P.y,12,'#7dd3fc');msg('🐺 ICE BURST! Monster melambat!')}
+ enemies.forEach(e=>{if(e.dead)return;e.flash-=dt;const stop=wallY-(e.boss?30:18);
+  if(e.y<stop){let k=(e.slow>0?.55:1)*(frostT>0?.25:1);e.slow-=dt;e.y=Math.min(stop,e.y+e.sp*k*dt);if(e.zz)e.x+=Math.sin(time*3+e.seed)*35*dt;e.x=Math.max(20,Math.min(W-20,e.x))}
+  else{e.atkCD-=dt;if(e.atkCD<=0){e.atkCD=e.boss?1.8:1.2;wallHit(e)}}});
+ shots.forEach(s=>{s.px=s.x;s.py=s.y;s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;if(s.y<-30||s.x<-30||s.x>W+30)s.life=0;if(s.life<=0)return;
+  for(const e of enemies){if(e.dead)continue;if(sd(s.px,s.py,s.x,s.y,e.x,e.y-6)<(e.boss?34:22)){hitMob(e,s.d,s.crit);s.life=0;break}}});
+ shots=shots.filter(s=>s.life>0);enemies=enemies.filter(e=>!e.dead)}
+function sd(a,b,c,d,e,f){const dx=c-a,dy=d-b,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((e-a)*dx+(f-b)*dy)/l)):0;return Math.hypot(a+t*dx-e,b+t*dy-f)}
+
+/* ===== INPUT ===== */
+let drag=false;
+function aim(e){const r=cv.getBoundingClientRect();P.ax=e.clientX-r.left;P.ay=e.clientY-r.top;aimIdle=0}
+cv.addEventListener('pointerdown',e=>{drag=true;cv.setPointerCapture(e.pointerId);initAudio();aim(e)});
+cv.addEventListener('pointermove',e=>{if(drag)aim(e)});
+cv.addEventListener('pointerup',()=>drag=false);cv.addEventListener('pointercancel',()=>drag=false);
+addEventListener('keydown',e=>{if(e.key==='1'||e.key===' ')useSkill();if(e.key==='2')useFrost();if(e.key==='3')useRepair();if(e.key==='p')pause()});
+
+/* ===== DRAW ===== */
+function draw(){const T=th();ctx.save();ctx.clearRect(0,0,W,H);if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+ const g=ctx.createLinearGradient(0,0,0,wallY);g.addColorStop(0,T.c[0]);g.addColorStop(1,T.c[1]);ctx.fillStyle=g;ctx.fillRect(-10,-10,W+20,wallY+10);
+ ctx.fillStyle=T.d;dots.forEach(d=>{d.y+=T.v*.016;d.x+=Math.sin(time+d.r*5)*.15;if(d.y>wallY)d.y=0;if(d.y<0)d.y=wallY;ctx.globalAlpha=.4;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,6.3);ctx.fill()});ctx.globalAlpha=1;
+ ctx.fillStyle=T.c[2];ctx.fillRect(-10,wallY,W+20,H);
+ ctx.fillStyle='#6b7280';ctx.fillRect(0,wallY,W,H*.07);ctx.fillStyle='#8a93a3';for(let x=0;x<W;x+=30)ctx.fillRect(x,wallY-8,18,8);
+ ctx.strokeStyle='#4b5563';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,wallY+H*.035);ctx.lineTo(W,wallY+H*.035);for(let x=0;x<W;x+=40){ctx.moveTo(x,wallY);ctx.lineTo(x,wallY+H*.035);ctx.moveTo(x+20,wallY+H*.035);ctx.lineTo(x+20,wallY+H*.07)}ctx.stroke();
+ const hp=fortHP/fortMax;ctx.fillStyle='rgba(220,30,30,'+(1-hp)*.45+')';ctx.fillRect(0,wallY,W,H*.07);
+ ctx.fillStyle='#0008';ctx.fillRect(0,wallY+H*.07-5,W,5);ctx.fillStyle=hp>.5?'#48d597':hp>.25?'#f5b942':'#ef4444';ctx.fillRect(0,wallY+H*.07-5,W*hp,5);
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ if(st==='play'||st==='pause'){const a=Math.atan2(P.ay-P.y,P.ax-P.x);ctx.setLineDash([4,7]);ctx.strokeStyle='rgba(255,255,255,.25)';ctx.beginPath();ctx.moveTo(P.x,P.y);ctx.lineTo(P.x+Math.cos(a)*W,P.y+Math.sin(a)*W);ctx.stroke();ctx.setLineDash([]);
+  if(aimIdle<2.5){ctx.strokeStyle='#f5d77c';ctx.beginPath();ctx.arc(P.ax,P.ay,10,0,6.3);ctx.stroke()}
+  ctx.save();ctx.translate(P.x,P.y-12);ctx.rotate(a);ctx.strokeStyle=bersT>0?'#ff6b3d':'#f4c95d';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(44,0);ctx.stroke();ctx.restore()}
+ ctx.font='36px serif';ctx.fillText('🤠',P.x,P.y+Math.sin(time*3)*1.5);ctx.font='28px serif';ctx.fillText('🐺',P.x+46,P.y+4+Math.sin(time*4)*2);positionPetBubble();
+ if(bersT>0){ctx.font='18px serif';ctx.fillText('🔥',P.x,P.y-30)}
+ enemies.slice().sort((a,b)=>a.y-b.y).forEach(e=>{const s=e.boss?46:28,b=Math.sin(time*6+e.seed)*2;
+  ctx.fillStyle='#0004';ctx.beginPath();ctx.ellipse(e.x,e.y+s*.45,s*.45,s*.14,0,0,6.3);ctx.fill();
+  ctx.font=s+'px serif';ctx.fillText(e.e,e.x,e.y+b);
+  if(e.flash>0){ctx.fillStyle='rgba(255,255,255,.45)';ctx.beginPath();ctx.arc(e.x,e.y,s*.5,0,6.3);ctx.fill()}
+  if(frostT>0||e.slow>0){ctx.fillStyle='rgba(125,211,252,.3)';ctx.beginPath();ctx.arc(e.x,e.y,s*.55,0,6.3);ctx.fill()}
+  const w=e.boss?80:40,y=e.y-s*.7;ctx.fillStyle='#4a1820';ctx.fillRect(e.x-w/2,y,w,5);ctx.fillStyle=e.boss?'#f5b942':'#48d597';ctx.fillRect(e.x-w/2,y,w*Math.max(0,e.hp/e.max),5);
+  if(e.boss){ctx.font='bold 11px system-ui';ctx.fillStyle='#fff';ctx.fillText(e.n,e.x,y-8)}});
+ shots.forEach(s=>{ctx.strokeStyle=s.pet?'#7dd3fc':s.crit?'#ff9d2e':'#fde68a';ctx.lineWidth=s.crit?4:3;ctx.beginPath();ctx.moveTo(s.px-s.vx*.02,s.py-s.vy*.02);ctx.lineTo(s.x,s.y);ctx.stroke()});
+ parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.l);ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,6.3);ctx.fill()});ctx.globalAlpha=1;
+ ctx.font='bold 14px system-ui';texts.forEach(t=>{ctx.globalAlpha=Math.min(1,t.l/t.m*1.5);ctx.fillStyle=t.c;ctx.fillText(t.t,t.x,t.y)});ctx.globalAlpha=1;
+ if(combo>=3&&st==='play'){ctx.font='bold 16px system-ui';ctx.fillStyle=bersT>0?'#ff6b3d':'#f5d77c';ctx.fillText('COMBO x'+combo,W/2,22)}
+ if(banner>0){ctx.globalAlpha=Math.min(1,banner);ctx.font='bold 26px system-ui';ctx.fillStyle='#fff';ctx.fillText(bossOn&&boss?'🚨 BOSS: '+boss.n:'STAGE '+stage+' • '+T.n,W/2,H*.3);ctx.globalAlpha=1}
+ if(hp<.3&&st==='play'){ctx.fillStyle='rgba(255,0,0,'+(.08+Math.sin(time*6)*.05)+')';ctx.fillRect(0,0,W,H)}
+ ctx.restore()}
+
+let last=0;
+function loop(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();hud();requestAnimationFrame(loop)}
+hub();requestAnimationFrame(loop);
+</script></body></html>
